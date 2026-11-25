@@ -9,50 +9,49 @@ import SwiftUI
 import NimbleViews
 
 enum TabEnum: String, CaseIterable, Hashable {
-	case sources
+	case home
 	case library
+	case tools
 	case settings
-	case certificates
 	
 	var title: String {
 		switch self {
-		case .sources:     	return .localized("Sources")
-		case .library: 		return .localized("Library")
-		case .settings: 	return .localized("Settings")
-		case .certificates:	return .localized("Certificates")
+		case .home:			return "首页"
+		case .library:		return "应用"
+		case .tools:		return "工具"
+		case .settings:		return "我的"
 		}
 	}
 	
 	var icon: String {
 		switch self {
-		case .sources: 		return "globe.desk"
-		case .library: 		return "square.grid.2x2"
-		case .settings: 	return "gearshape.2"
-		case .certificates: return "person.text.rectangle"
+		case .home:			return "house.fill"
+		case .library:		return "square.grid.2x2.fill"
+		case .tools:		return "wrench.and.screwdriver.fill"
+		case .settings:		return "person.crop.circle.fill"
 		}
 	}
 	
 	@ViewBuilder
 	static func view(for tab: TabEnum) -> some View {
 		switch tab {
-		case .sources: SourcesView()
-		case .library: LibraryView()
-		case .settings: SettingsView()
-		case .certificates: NBNavigationView(.localized("Certificates")) { CertificatesView() }
+		case .home:			HomeView()
+		case .library:		LibraryView()
+		case .tools:		ToolsView()
+		case .settings:		SettingsView()
 		}
 	}
 	
 	static var defaultTabs: [TabEnum] {
 		return [
-			.sources,
+			.home,
 			.library,
+			.tools,
 			.settings
 		]
 	}
 	
 	static var customizableTabs: [TabEnum] {
-		return [
-			.certificates
-		]
+		return []
 	}
 }

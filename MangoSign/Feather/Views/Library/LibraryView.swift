@@ -72,7 +72,7 @@ struct LibraryView: View {
 	
 	// MARK: Body
 	var body: some View {
-		NBNavigationView(.localized("Library")) {
+		NBNavigationView("应用") {
 			NBListAdaptable {
 				if let announcement = _brand.announcement {
 					NBSection(.localized("公告")) {

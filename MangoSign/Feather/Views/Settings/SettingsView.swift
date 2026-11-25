@@ -40,7 +40,7 @@ struct SettingsView: View {
     
 	// MARK: Body
 	var body: some View {
-		NBNavigationView(.localized("Settings")) {
+		NBNavigationView("我的") {
 			Form {
 				_brandHeader()
 
