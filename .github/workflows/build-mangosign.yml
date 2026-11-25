@@ -12,15 +12,18 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 60
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 显示工具链
+      - name: 选择 Xcode
         run: |
+          if [ -d /Applications/Xcode_26.3.0.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.0.app
+          fi
           xcodebuild -version
           swift --version
 
