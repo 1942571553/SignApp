@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 120
     steps:
       - name: 检出代码
@@ -131,3 +131,5 @@ jobs:
           git commit -m "ci: mangosign log [skip ci]" || true
           git pull --rebase origin main || true
           git push origin HEAD:main || true
+
+# retry 2026-11-26 05:00 CST
