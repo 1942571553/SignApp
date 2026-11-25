@@ -1,6 +1,11 @@
 name: Build IPA
 
 on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       bundle_id:
@@ -11,12 +16,9 @@ on:
         description: "导出方式：ad-hoc / development / app-store"
         required: false
         default: ""
-  push:
-    tags:
-      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -137,12 +139,20 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
             build
+
+          APP="$PWD/build/dd/Build/Products/Release-iphoneos/SignApp.app"
+          ls -la "$APP"
+          file "$APP/SignApp"
+          plutil -p "$APP/Info.plist" | head -20
+
+          rm -rf "$PWD/build/Payload"
           mkdir -p "$PWD/build/Payload"
-          cp -R "$PWD/build/dd/Build/Products/Release-iphoneos/SignApp.app" "$PWD/build/Payload/"
+          cp -R "$APP" "$PWD/build/Payload/"
           cd "$PWD/build"
           zip -qry "SignApp-unsigned.ipa" Payload
+          ls -la "SignApp-unsigned.ipa"
 
-      - name: 上传产物
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: SignApp-${{ github.run_number }}
@@ -151,3 +161,16 @@ jobs:
             build/*.ipa
           if-no-files-found: error
           retention-days: 30
+
+      - name: 发布到 Release（供匿名下载）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: SignApp build ${{ github.run_number }}
+          files: |
+            build/export/*.ipa
+            build/*.ipa
+          fail_on_unmatched_files: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
