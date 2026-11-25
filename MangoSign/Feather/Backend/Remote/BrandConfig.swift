@@ -38,7 +38,7 @@ final class BrandStore: ObservableObject {
 	static let shared = BrandStore()
 
 	/// 后台「品牌」页填的站点地址 + 配置 token，可在 App 设置里改
-	static let defaultConfigURL = "https://your-domain.com/api/config?token=yixiangdz2026sign"
+	static let defaultConfigURL = "https://sign.yxy1.cc/api/config?token=yixiangdz2026sign"
 
 	@Published var brand: BrandInfo?
 	@Published var client: ClientInfo?
