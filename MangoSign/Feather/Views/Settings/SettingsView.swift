@@ -159,7 +159,7 @@ extension SettingsView {
 					.font(.caption)
 					.foregroundStyle(.red)
 			} else if let date = _brand.lastSync {
-				Text(.localized("上次同步：%@", arguments: date.formatted(date: .abbreviated, time: .shortened)))
+				Text(verbatim: .localized("上次同步：%@", arguments: date.formatted(date: .abbreviated, time: .shortened)))
 					.font(.caption)
 					.foregroundStyle(.secondary)
 			}
