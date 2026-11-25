@@ -7,10 +7,6 @@ on:
       - ".github/workflows/build-mangosign.yml"
   workflow_dispatch:
 
-concurrency:
-  group: mangosign-build
-  cancel-in-progress: true
-
 permissions:
   contents: write
 
