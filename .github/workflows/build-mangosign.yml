@@ -109,6 +109,7 @@ jobs:
 
       - name: 发布 Release
         id: release
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mangosign-${{ github.run_number }}
@@ -118,6 +119,23 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 输出 Release 结果
+        if: always()
+        run: |
+          echo "release=${{ steps.release.outcome }}"
+
+      - name: 提交 ipa 到仓库
+        if: always()
+        run: |
+          mkdir -p builds
+          cp MangoSign/MangoSign-unsigned.ipa builds/MangoSign-unsigned.ipa
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add builds/MangoSign-unsigned.ipa
+          git commit -m "build: ipa [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
 
       - name: 失败诊断
         if: failure()
