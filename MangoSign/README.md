@@ -4,7 +4,7 @@
 
 ## 与原版的差异
 
-- 显示名称改为「艺祥签」，Bundle ID 改为 `com.mangosign.app`
+- 显示名称改为「艺祥签」，Bundle ID 改为 `com.yixiangsign.app`
 - 全新 App 图标与主题色（墨绿 → 芒果橙）
 - 新增 `Feather/Backend/Remote/BrandConfig.swift`：启动时拉取品牌配置
 - 首页顶部显示后台配置的公告，并可跳转客服链接

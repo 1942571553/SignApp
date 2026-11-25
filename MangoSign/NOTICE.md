@@ -5,7 +5,7 @@ MangoSign（艺祥签）
 修改日期：2026-11-25。
 
 修改内容：
-1. Feather.xcconfig：Bundle ID 由 thewonderofyou.Feather 改为 com.mangosign.app，版本号 1.0.0
+1. Feather.xcconfig：Bundle ID 由 thewonderofyou.Feather 改为 com.yixiangsign.app，版本号 1.0.0
 2. Feather.xcodeproj：CFBundleDisplayName 改为「艺祥签」
 3. Feather/Resources/Assets.xcassets/AppIcon.appiconset：替换 App 图标
 4. Feather/Resources/AppIcon.icon：替换图标资源与渐变色
