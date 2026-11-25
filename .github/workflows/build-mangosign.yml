@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
       - name: 检出代码
@@ -132,4 +132,4 @@ jobs:
           git pull --rebase origin main || true
           git push origin HEAD:main || true
 
-# retry 2026-11-26 05:12 CST macos-26
+# retry 2026-11-26 05:30 CST macos-15-intel
