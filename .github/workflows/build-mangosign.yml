@@ -11,34 +11,9 @@ permissions:
   contents: write
 
 jobs:
-  env:
-    runs-on: macos-15
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - name: 记录环境
-        run: |
-          mkdir -p ci-logs
-          {
-            echo "date: $(date -u)"
-            echo "runner: $RUNNER_OS $RUNNER_ARCH"
-            echo "xcode-select: $(xcode-select -p || true)"
-            xcodebuild -version || true
-            echo "--- /Applications ---"
-            ls /Applications | grep -i xcode || true
-          } > ci-logs/mangosign-env.txt
-      - name: 提交环境信息
-        run: |
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          git add ci-logs/mangosign-env.txt
-          git commit -m "ci: mangosign env [skip ci]" || true
-          git pull --rebase origin main || true
-          git push origin HEAD:main || true
-
   build:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
