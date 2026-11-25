@@ -37,7 +37,7 @@ struct BrandConfigResponse: Codable, Equatable {
 final class BrandStore: ObservableObject {
 	static let shared = BrandStore()
 
-	/// 后台「品牌」页填的站点地址 + 配置 token，可在 App 设置里改
+	/// 后台「品牌」页填的站点地址 + 配置 token，写死在 App 内，不允许在设置里修改
 	static let defaultConfigURL = "https://sign.yixsc.cn/api/config?token=yixiangdz2026sign"
 
 	@Published var brand: BrandInfo?
@@ -45,13 +45,10 @@ final class BrandStore: ObservableObject {
 	@Published var lastError: String?
 	@Published var lastSync: Date?
 
-	private let _urlKey = "mango.config.url"
 	private let _cacheKey = "mango.config.cache"
 
-	var configURL: String {
-		get { UserDefaults.standard.string(forKey: _urlKey) ?? Self.defaultConfigURL }
-		set { UserDefaults.standard.set(newValue, forKey: _urlKey) }
-	}
+	/// 只读：始终返回写死的地址，旧版本存在 UserDefaults 里的改动也不再生效
+	var configURL: String { Self.defaultConfigURL }
 
 	init() {
 		_loadCache()

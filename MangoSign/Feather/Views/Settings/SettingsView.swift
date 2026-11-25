@@ -16,7 +16,6 @@ struct SettingsView: View {
 	@AppStorage("feather.selectedCert") private var _storedSelectedCert: Int = 0
 	@State private var _currentIcon: String? = UIApplication.shared.alternateIconName
 	@StateObject private var _brand = BrandStore.shared
-	@State private var _configURL: String = ""
 	@State private var _isSyncing = false
 	
 	// MARK: Fetch
@@ -99,9 +98,6 @@ struct SettingsView: View {
 					Text(.localized("Reset the applications sources, certificates, apps, and general contents."))
 				}
 			}
-			.onAppear {
-				_configURL = _brand.configURL
-			}
 		}
 	}
 }
@@ -130,14 +126,17 @@ extension SettingsView {
 	@ViewBuilder
 	private func _server() -> some View {
 		Section {
-			TextField("https://你的域名/api/config?token=", text: $_configURL)
-				.keyboardType(.URL)
-				.textInputAutocapitalization(.never)
-				.autocorrectionDisabled()
-				.font(.footnote)
+			HStack(alignment: .top, spacing: 8) {
+				Image(systemName: "lock.fill")
+					.font(.caption)
+					.foregroundStyle(.secondary)
+				Text(verbatim: _brand.configURL)
+					.font(.footnote)
+					.foregroundStyle(.secondary)
+					.textSelection(.enabled)
+			}
 
 			Button {
-				_brand.configURL = _configURL
 				_isSyncing = true
 				Task {
 					await _brand.refresh()
@@ -166,7 +165,7 @@ extension SettingsView {
 		} header: {
 			Text(.localized("服务器"))
 		} footer: {
-			Text(.localized("填写签名站品牌配置接口地址，App 启动时自动拉取名称、公告、主题色和客服链接。"))
+			Text(.localized("服务器地址已在安装包内固定，无法在 App 内修改，避免误改导致连不上后台。"))
 		}
 	}
 
