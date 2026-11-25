@@ -17,7 +17,7 @@
 App 请求：
 
 ```
-GET https://sign.yxy1.cc/api/config?token=yixiangdz2026sign
+GET https://sign.yixsc.cn/api/config?token=yixiangdz2026sign
 ```
 
 返回（与 `brandd` 品牌服务一致）：
