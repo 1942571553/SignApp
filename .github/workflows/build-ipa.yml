@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "SignApp/**"
+      - "project.yml"
+      - ".github/workflows/build-ipa.yml"
     tags:
       - "v*"
   workflow_dispatch:

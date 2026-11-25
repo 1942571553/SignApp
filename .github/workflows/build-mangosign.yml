@@ -1,0 +1,96 @@
+name: Build MangoSign IPA
+
+on:
+  push:
+    paths:
+      - "MangoSign/**"
+      - ".github/workflows/build-mangosign.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 显示工具链
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: 编译（未签名）
+        working-directory: MangoSign
+        run: |
+          set -o pipefail
+          if ! xcodebuild \
+            -project Feather.xcodeproj \
+            -scheme Feather \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
+            > "$RUNNER_TEMP/build.log" 2>&1; then
+            echo "=== 编译失败，最后 250 行 ==="
+            tail -n 250 "$RUNNER_TEMP/build.log"
+            exit 1
+          fi
+          tail -n 30 "$RUNNER_TEMP/build.log"
+
+      - name: 组装 ipa
+        working-directory: MangoSign
+        run: |
+          APP=$(find . -path '*_build/Applications/Feather.app' -print -quit)
+          if [ -z "$APP" ]; then
+            APP=$(find "$RUNNER_TEMP/dd" -name 'Feather.app' -path '*Release-iphoneos*' -print -quit)
+          fi
+          if [ -z "$APP" ]; then
+            echo "找不到 Feather.app"
+            exit 1
+          fi
+          echo "APP=$APP"
+          rm -rf out MangoSign-unsigned.ipa
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/Feather.app
+          chmod -R 0755 out/Payload/Feather.app
+          cd out
+          /usr/bin/zip -qry ../MangoSign-unsigned.ipa Payload
+          cd ..
+          ls -lh MangoSign-unsigned.ipa
+          /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "out/Payload/Feather.app/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "out/Payload/Feather.app/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "out/Payload/Feather.app/Info.plist"
+
+      - name: 上传构建日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangosign-build-log
+          path: ${{ runner.temp }}/build.log
+          if-no-files-found: ignore
+
+      - name: 上传 ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: MangoSign-unsigned
+          path: MangoSign/MangoSign-unsigned.ipa
+
+      - name: 发布 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mangosign-${{ github.run_number }}
+          name: MangoSign build ${{ github.run_number }}
+          files: MangoSign/MangoSign-unsigned.ipa
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
