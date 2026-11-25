@@ -1,10 +1,10 @@
-# 芒果签名（MangoSign）
+# 艺祥签（MangoSign）
 
 基于开源项目 [Feather](https://github.com/claration/Feather)（GPL-3.0）二次开发的 iOS 端签名工具。保留设备内导入 ipa / p12 / mobileprovision、zsign 重签、导出与安装能力，并新增「远程品牌配置」。
 
 ## 与原版的差异
 
-- 显示名称改为「芒果签名」，Bundle ID 改为 `com.mangosign.app`
+- 显示名称改为「艺祥签」，Bundle ID 改为 `com.mangosign.app`
 - 全新 App 图标与主题色（墨绿 → 芒果橙）
 - 新增 `Feather/Backend/Remote/BrandConfig.swift`：启动时拉取品牌配置
 - 首页顶部显示后台配置的公告，并可跳转客服链接
@@ -26,8 +26,8 @@ GET https://sign.yixsc.cn/api/config?token=yixiangdz2026sign
 {
   "ok": true,
   "brand": {
-    "app_name": "芒果签名",
-    "app_title": "芒果签名",
+    "app_name": "艺祥签",
+    "app_title": "艺祥签",
     "subtitle": "在手机上离线重签",
     "theme_color": "#E8933A",
     "announcement": "公告内容",

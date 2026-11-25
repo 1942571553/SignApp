@@ -1,4 +1,4 @@
-MangoSign（芒果签名）
+MangoSign（艺祥签）
 ====================
 
 本目录是 Feather（https://github.com/claration/Feather，GPL-3.0）的修改版本，
@@ -6,7 +6,7 @@ MangoSign（芒果签名）
 
 修改内容：
 1. Feather.xcconfig：Bundle ID 由 thewonderofyou.Feather 改为 com.mangosign.app，版本号 1.0.0
-2. Feather.xcodeproj：CFBundleDisplayName 改为「芒果签名」
+2. Feather.xcodeproj：CFBundleDisplayName 改为「艺祥签」
 3. Feather/Resources/Assets.xcassets/AppIcon.appiconset：替换 App 图标
 4. Feather/Resources/AppIcon.icon：替换图标资源与渐变色
 5. 默认主题色由 #848ef9 改为 #E8933A
