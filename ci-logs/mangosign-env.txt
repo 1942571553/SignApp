@@ -1,9 +1,20 @@
-date: Wed Nov 25 13:51:32 UTC 2026
+date: Wed Nov 25 15:58:01 UTC 2026
 runner: macOS ARM64
-xcode-select: /Applications/Xcode_26.6.app/Contents/Developer
-Xcode 26.6
-Build version 17F113
+xcode-select: /Applications/Xcode_16.4.app/Contents/Developer
+Xcode 16.4
+Build version 16F6
 --- /Applications ---
+Xcode_16.0.0.app
+Xcode_16.0.app
+Xcode_16.1.0.app
+Xcode_16.1.app
+Xcode_16.2.0.app
+Xcode_16.2.app
+Xcode_16.3.0.app
+Xcode_16.3.app
+Xcode_16.4.0.app
+Xcode_16.4.app
+Xcode_16.app
 Xcode_26.0.1.app
 Xcode_26.0.app
 Xcode_26.1.1.app
@@ -12,10 +23,4 @@ Xcode_26.2.0.app
 Xcode_26.2.app
 Xcode_26.3.0.app
 Xcode_26.3.app
-Xcode_26.4.1.app
-Xcode_26.4.app
-Xcode_26.5.0.app
-Xcode_26.5.app
-Xcode_26.6.0.app
-Xcode_26.6.app
 Xcode.app
