@@ -7,12 +7,16 @@ on:
       - ".github/workflows/build-mangosign.yml"
   workflow_dispatch:
 
+concurrency:
+  group: mangosign-build
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
   env:
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +41,7 @@ jobs:
           git push origin HEAD:main || true
 
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - name: 检出代码
