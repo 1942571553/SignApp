@@ -11,15 +11,40 @@ permissions:
   contents: write
 
 jobs:
+  env:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 记录环境
+        run: |
+          mkdir -p ci-logs
+          {
+            echo "date: $(date -u)"
+            echo "runner: $RUNNER_OS $RUNNER_ARCH"
+            echo "xcode-select: $(xcode-select -p || true)"
+            xcodebuild -version || true
+            echo "--- /Applications ---"
+            ls /Applications | grep -i xcode || true
+          } > ci-logs/mangosign-env.txt
+      - name: 提交环境信息
+        run: |
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add ci-logs/mangosign-env.txt
+          git commit -m "ci: mangosign env [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
+
   build:
     runs-on: macos-latest
     timeout-minutes: 60
-
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
       - name: 选择 Xcode
+        id: xcode
         run: |
           if [ -d /Applications/Xcode_26.3.0.app ]; then
             sudo xcode-select -s /Applications/Xcode_26.3.0.app
@@ -28,6 +53,7 @@ jobs:
           swift --version
 
       - name: 编译（未签名）
+        id: build
         working-directory: MangoSign
         run: |
           set -o pipefail
@@ -50,6 +76,7 @@ jobs:
           tail -n 30 "$RUNNER_TEMP/build.log"
 
       - name: 组装 ipa
+        id: package
         working-directory: MangoSign
         run: |
           APP=$(find . -path '*_build/Applications/Feather.app' -print -quit)
@@ -73,32 +100,15 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "out/Payload/Feather.app/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "out/Payload/Feather.app/Info.plist"
 
-      - name: 失败时回传日志
-        if: failure()
-        run: |
-          mkdir -p ci-logs
-          cp "$RUNNER_TEMP/build.log" ci-logs/mangosign-build.log || true
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          git add ci-logs/mangosign-build.log
-          git commit -m "ci: mangosign build log [skip ci]" || true
-          git push origin HEAD:main || true
-
-      - name: 上传构建日志
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mangosign-build-log
-          path: ${{ runner.temp }}/build.log
-          if-no-files-found: ignore
-
       - name: 上传 ipa
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: MangoSign-unsigned
           path: MangoSign/MangoSign-unsigned.ipa
 
       - name: 发布 Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mangosign-${{ github.run_number }}
@@ -108,3 +118,23 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 失败诊断
+        if: failure()
+        run: |
+          mkdir -p ci-logs
+          {
+            echo "xcode=${{ steps.xcode.outcome }}"
+            echo "build=${{ steps.build.outcome }}"
+            echo "package=${{ steps.package.outcome }}"
+            echo "upload=${{ steps.upload.outcome }}"
+            echo "release=${{ steps.release.outcome }}"
+            echo "--- build.log tail ---"
+            tail -n 400 "$RUNNER_TEMP/build.log" 2>/dev/null || echo "no build.log"
+          } > ci-logs/mangosign-build.log
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add ci-logs/mangosign-build.log
+          git commit -m "ci: mangosign log [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
