@@ -45,7 +45,10 @@ struct ContentView: View {
             }
         }
         .fileImporter(isPresented: $pickIPA, allowedContentTypes: [.ipaFile]) { result in
-            if let url = try? result.get(), let stashed = stash(url) { ipaURL = stashed }
+            if let url = try? result.get(), let stashed = stash(url) {
+                ipaURL = stashed
+                if let bid = IPAMetadata.bundleIdentifier(of: stashed), bundleID.isEmpty { bundleID = bid }
+            }
         }
         .fileImporter(isPresented: $pickP12, allowedContentTypes: [.p12File]) { result in
             if let url = try? result.get(), let stashed = stash(url) { p12URL = stashed }
@@ -197,16 +200,21 @@ struct ContentView: View {
     private func startSigning() {
         guard let ipaURL, let p12URL, let provURL else { return }
         isSigning = true
-        log = "准备签名…"
-        let bundle = bundleID.trimmingCharacters(in: .whitespaces)
+        log = "读取 ipa 信息…"
+        let typed = bundleID.trimmingCharacters(in: .whitespaces)
         DispatchQueue.global(qos: .userInitiated).async {
             do {
+                let resolved = typed.isEmpty ? (IPAMetadata.bundleIdentifier(of: ipaURL) ?? "") : typed
+                if resolved.isEmpty {
+                    throw SigningFailure.failed("读不到 ipa 的 Bundle ID，请手动填写。")
+                }
+                DispatchQueue.main.async { log = "Bundle ID：\(resolved)，开始签名…" }
                 let result = try SigningEngine.sign(
                     ipa: ipaURL,
                     p12: p12URL,
                     prov: provURL,
                     password: password,
-                    bundleID: bundle.isEmpty ? nil : bundle
+                    bundleID: resolved
                 )
                 DispatchQueue.main.async {
                     signedURL = result.output

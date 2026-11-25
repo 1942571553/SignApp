@@ -18,7 +18,7 @@ struct SigningResult {
 }
 
 enum SigningEngine {
-    static func sign(ipa: URL, p12: URL, prov: URL, password: String, bundleID: String?) throws -> SigningResult {
+    static func sign(ipa: URL, p12: URL, prov: URL, password: String, bundleID: String) throws -> SigningResult {
         let identityData = try Data(contentsOf: p12)
         let profileData = try Data(contentsOf: prov)
 
