@@ -20,6 +20,7 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+PYTHON_BIN="$(command -v python3)"
 PYVER=$(python3 -c 'import sys; print(sys.version_info[0]*100+sys.version_info[1])')
 if [ "$PYVER" -lt 308 ]; then
   echo "Python 版本过低（$(python3 --version)），需要 3.8+"
@@ -55,7 +56,7 @@ Environment=YIXIANG_BASE_URL=$BASE_URL
 Environment=YIXIANG_DATA=$APP_DIR/data
 Environment=YIXIANG_DB=$APP_DIR/data/yixiang.db
 Environment=YIXIANG_ADMIN_PASSWORD=$ADMIN_PASSWORD
-ExecStart=/usr/bin/python3 $APP_DIR/server.py
+ExecStart=$PYTHON_BIN $APP_DIR/server.py
 Restart=always
 RestartSec=3
 LimitNOFILE=65535

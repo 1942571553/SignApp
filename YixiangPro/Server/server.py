@@ -651,6 +651,8 @@ class Handler(BaseHTTPRequestHandler):
                 if self.require_admin(conn): self.handle_user_update(conn)
             elif path == "/admin/settings/save":
                 if self.require_admin(conn): self.handle_settings_save(conn)
+            elif path == "/admin/password":
+                if self.require_admin(conn): self.handle_admin_password(conn)
             else:
                 self.send_json({"ok": False, "message": "Not found"}, 404)
         except Exception as exc:
@@ -935,6 +937,20 @@ class Handler(BaseHTTPRequestHandler):
         conn.commit()
         self.redirect("/admin/settings")
 
+    def handle_admin_password(self, conn):
+        admin = self.require_admin(conn)
+        form = self.read_form()
+        current = form.get("current", "")
+        new = form.get("new", "")
+        if not admin or not verify_password(current, admin["salt"], admin["password_hash"]):
+            self.send_html("<p style='color:#d83a3a'>当前密码错误</p>", 403); return
+        if len(new) < 8:
+            self.send_html("<p style='color:#d83a3a'>新密码至少 8 位</p>", 400); return
+        salt = secrets.token_hex(16)
+        conn.execute("UPDATE users SET password_hash=?, salt=? WHERE id=?", (hash_password(new, salt), salt, admin["id"]))
+        conn.commit()
+        self.redirect("/admin/settings")
+
     def send_html(self, content, status=200, headers=None):
         if not content.startswith("<!DOCTYPE"):
             content = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>艺祥签</title>%s</head><body>%s</body></html>" % (ADMIN_CSS, content)
@@ -1109,7 +1125,9 @@ def admin_settings(conn):
 <div><label>开始</label><input type='datetime-local' name='global_lock_start' value='%s'></div><div><label>结束</label><input type='datetime-local' name='global_lock_end' value='%s'></div>
 <div><label>锁定时提示</label><input name='global_lock_reason' value='%s'></div><div><label>安装包保留小时</label><input name='install_ttl_hours' value='%s'></div></div></div>
 <div class='card'><h2>视觉</h2><div class='grid'><div><label>主色</label><input name='theme_primary' value='%s'></div><div><label>辅色</label><input name='theme_secondary' value='%s'></div><div><label>强调色</label><input name='theme_accent' value='%s'></div></div></div>
-<button>保存全部设置</button></form><footer>设置保存后，客户端刷新配置即可生效</footer></div></body></html>""" % (
+<button>保存全部设置</button></form>
+<div class='card'><h2>修改管理员密码</h2><form method='post' action='/admin/password'><div class='two'><div><label>当前密码</label><input type='password' name='current'></div><div><label>新密码（至少 8 位）</label><input type='password' name='new'></div></div><button class='btn soft' style='margin-top:12px'>更新密码</button></form></div>
+<footer>设置保存后，客户端刷新配置即可生效</footer></div></body></html>""" % (
         ADMIN_CSS, admin_nav("/admin/settings"), esc(s.get("brand_name", "")), esc(s.get("brand_subtitle", "")), esc(s.get("support_url", "")), esc(s.get("announcement", "")),
         checked("allow_sign"), checked("allow_install"), checked("allow_store"), checked("allow_tools"), checked("registration_enabled"), checked("require_login_install"), checked("force_update"),
         esc(s.get("client_min_version", "")), esc(s.get("client_version", "")), esc(s.get("client_download_url", "")), esc(s.get("default_user_days", "")),

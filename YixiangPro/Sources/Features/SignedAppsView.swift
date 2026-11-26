@@ -174,7 +174,7 @@ struct SignedDetailView: View {
                 .yCard(14)
 
                 VStack(spacing: 10) {
-                    YPrimaryButton(title: busy ? "正在上传安装包…" : "安装到设备", icon: "arrow.down.app.fill", enabled: !busy) {
+                    YPrimaryButton(title: busy ? "正在上传安装包…" : "安装到设备", icon: "arrow.down.app.fill", enabled: !busy && model.allowInstall) {
                         install()
                     }
                     HStack(spacing: 10) {
@@ -321,7 +321,7 @@ struct SigningSheet: View {
                     .yCard(14)
 
                     if let error { Text(error).font(.caption).foregroundColor(YTheme.red).multilineTextAlignment(.center) }
-                    YPrimaryButton(title: busy ? "正在签名…" : "开始签名", icon: "signature", enabled: !busy && selectedCert != nil) {
+                    YPrimaryButton(title: busy ? "正在签名…" : "开始签名", icon: "signature", enabled: !busy && selectedCert != nil && model.allowSigning) {
                         sign()
                     }
                     Text("签名过程完全在本机完成，使用开源 zsign 内核；不会把 p12 或描述文件上传到服务器。")

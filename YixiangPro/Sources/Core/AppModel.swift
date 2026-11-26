@@ -88,6 +88,14 @@ final class AppModel: ObservableObject {
     var isLoggedIn: Bool { user != nil && APIClient.shared.token != nil }
     var globalLock: TimeLock? { config?.timeLock }
     var isGloballyLocked: Bool { config?.timeLock?.active == true }
+    var allowStore: Bool { featureEnabled("store") }
+    var allowSigning: Bool { featureEnabled("signing") }
+    var allowInstall: Bool { featureEnabled("install") }
+    var allowTools: Bool { featureEnabled("tools") }
+
+    func featureEnabled(_ key: String) -> Bool {
+        config?.features?[key] ?? true
+    }
     var remainingDays: Int? {
         guard let expiry = user?.expiresAt else { return nil }
         return max(0, (expiry - Int(Date().timeIntervalSince1970)) / 86400)

@@ -78,6 +78,12 @@ struct ToolsView: View {
             .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .overlay {
+            if !model.allowTools {
+                FeatureOffView(title: "工具页已关闭", message: "管理员已在服务端关闭工具页，可在设置中刷新配置或联系管理员。")
+                    .background(YTheme.background)
+            }
+        }
     }
 
     private var header: some View {
@@ -141,10 +147,11 @@ struct SystemInfoView: View {
     }
 
     private var storageCard: some View {
-        VStack(spacing: 10) {
+        let attrs = (try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())) ?? [:]
+        return VStack(spacing: 10) {
             YSectionTitle(title: "存储")
-            YInfoLine(title: "总容量", value: bytes((FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())[.systemSize] as? NSNumber)?.int64Value))
-            YInfoLine(title: "剩余", value: bytes((FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())[.systemFreeSize] as? NSNumber)?.int64Value))
+            YInfoLine(title: "总容量", value: bytes((attrs[.systemSize] as? NSNumber)?.int64Value))
+            YInfoLine(title: "剩余", value: bytes((attrs[.systemFreeSize] as? NSNumber)?.int64Value))
             YInfoLine(title: "App 占用", value: bytes(folderSize(YFiles.root)))
         }.yCard(14)
     }

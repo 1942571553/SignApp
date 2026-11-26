@@ -83,3 +83,23 @@ struct YInfoLine: View {
         }
     }
 }
+
+struct FeatureOffView: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundColor(YTheme.purple)
+            Text(title).font(.system(size: 19, weight: .bold)).foregroundColor(YTheme.text)
+            Text(message)
+                .font(.caption).foregroundColor(YTheme.muted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(YTheme.background)
+    }
+}

@@ -68,6 +68,12 @@ struct StoreView: View {
             CardRedeemView(source: source)
                 .environmentObject(model)
         }
+        .overlay {
+            if !model.allowStore {
+                FeatureOffView(title: "软件源商店已关闭", message: "管理员已在服务端关闭软件源商店，可在设置中刷新配置或联系管理员。")
+                    .background(YTheme.background)
+            }
+        }
     }
 
     private var header: some View {
@@ -362,7 +368,7 @@ struct StoreDetailView: View {
                 } label: {
                     HStack {
                         Image(systemName: "arrow.down.circle.fill")
-                        Text(model.isGloballyLocked ? "暂不可下载" : "下载并准备签名")
+                        Text(!model.allowInstall ? "安装已关闭" : (model.isGloballyLocked ? "暂不可下载" : "下载并准备签名"))
                     }
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
@@ -372,7 +378,7 @@ struct StoreDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .opacity(model.isGloballyLocked ? 0.6 : 1)
+                .opacity((model.isGloballyLocked || !model.allowInstall) ? 0.6 : 1)
             }
             .padding(16)
             .padding(.bottom, 20)

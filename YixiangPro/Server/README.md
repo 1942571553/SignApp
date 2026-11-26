@@ -43,9 +43,9 @@ sqlite3 /www/wwwroot/yixiang-server/data/yixiang.db ".backup /www/backup/yixiang
 - `/admin/settings` 品牌、功能开关、注册策略、全局时间锁
 - `/admin/installs` 临时安装包记录
 
-## 忘记管理员密码
+## 修改/忘记管理员密码
 
-停止服务，删除数据库中的 admin 用户或重置密码。推荐重新部署时通过环境变量 `YIXIANG_ADMIN_PASSWORD` 设置新密码，仅对首次初始化生效：
+登录后台后可在 `/admin/settings` 底部“修改管理员密码”直接改密。忘记密码时，停止服务并删除 admin 用户，重启会按 `YIXIANG_ADMIN_PASSWORD`（默认 `yixiang2026`）重新初始化：
 
 ```bash
 sudo systemctl stop yixiang
@@ -58,3 +58,19 @@ sudo systemctl start yixiang
 - 服务端只临时保存**已签名 IPA**用于 itms-services 分发，默认 24 小时清理，不保存 p12 和描述文件。
 - 卡密、时间锁、默认软件源均由服务端下发，客户端刷新配置后生效。
 - 生产环境请配置 HTTPS，并限制数据库文件权限。
+
+## 数据库
+
+服务端首次启动会自动创建 `data/yixiang.db`，表结构见 `schema.sql`。核心表：
+
+- `users`：注册用户、角色、状态、授权到期
+- `sessions`：登录令牌
+- `devices`：设备绑定（X-Device-ID / UDID）
+- `sources`：默认软件源、卡密开关、开放时间
+- `cards`：卡密、绑定源、天数、设备上限
+- `redemptions`：兑换记录
+- `installs`：临时分发的已签名 IPA
+- `settings`：品牌、公告、功能开关、全局时间锁
+- `logs`：管理操作日志
+
+后台 `/admin/users` 可直接启用/禁用用户、修改授权到期时间；`/admin/sources` 管理默认源；`/admin/cards` 生成和解锁卡密；`/admin/settings` 控制时间锁、注册开放、安装需登录、品牌与公告。
