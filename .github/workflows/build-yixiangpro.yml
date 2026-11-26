@@ -86,18 +86,6 @@ jobs:
           name: YixiangPro-unsigned
           path: YixiangPro/YixiangPro-unsigned.ipa
 
-      - name: 保存 ipa 到仓库
-        if: success()
-        run: |
-          mkdir -p YixiangPro/builds
-          cp YixiangPro/YixiangPro-unsigned.ipa YixiangPro/builds/YixiangPro-unsigned.ipa
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          git add YixiangPro/builds/YixiangPro-unsigned.ipa
-          git commit -m "build: yixiangpro ipa [skip ci]" || true
-          git pull --rebase origin main || true
-          git push origin HEAD:main || true
-
       - name: 发布 Release
         continue-on-error: true
         uses: softprops/action-gh-release@v2
@@ -109,6 +97,19 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 保存 ipa 到仓库
+        if: success()
+        continue-on-error: true
+        run: |
+          mkdir -p YixiangPro/builds
+          cp YixiangPro/YixiangPro-unsigned.ipa YixiangPro/builds/YixiangPro-unsigned.ipa
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add YixiangPro/builds/YixiangPro-unsigned.ipa
+          git commit -m "build: yixiangpro ipa [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
 
       - name: 失败诊断
         if: failure()
