@@ -1,0 +1,72 @@
+name: Preview YixiangPro Home
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 选择 Xcode
+        run: |
+          if [ -d /Applications/Xcode_26.3.0.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.0.app
+          fi
+          xcodebuild -version
+
+      - name: 安装 XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: 生成工程
+        working-directory: YixiangPro
+        run: xcodegen generate
+
+      - name: 编译模拟器版本
+        working-directory: YixiangPro
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project YixiangPro.xcodeproj \
+            -scheme YixiangPro \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/simdd" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO | tail -n 40
+
+      - name: 启动模拟器并截图
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 16 Pro/ {print $2; exit}')
+          if [ -z "$DEVICE_ID" ]; then
+            DEVICE_ID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')
+          fi
+          echo "simulator=$DEVICE_ID"
+          xcrun simctl boot "$DEVICE_ID" || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl status_bar "$DEVICE_ID" override --time "12:39" --batteryLevel 48 --wifiBars 3 --cellularBars 4 || true
+          APP=$(find "$RUNNER_TEMP/simdd" -name 'YixiangPro.app' -path '*Debug-iphonesimulator*' -print -quit)
+          echo "app=$APP"
+          xcrun simctl install "$DEVICE_ID" "$APP"
+          xcrun simctl launch "$DEVICE_ID" com.yixiangsign.app || true
+          sleep 15
+          mkdir -p YixiangPro/preview
+          xcrun simctl io "$DEVICE_ID" screenshot YixiangPro/preview/store-home-preview.png
+          ls -lh YixiangPro/preview/store-home-preview.png
+
+      - name: 上传预览截图
+        uses: actions/upload-artifact@v4
+        with:
+          name: YixiangPro-home-preview
+          path: YixiangPro/preview/store-home-preview.png
