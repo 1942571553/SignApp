@@ -5,7 +5,7 @@ enum YTab: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .apps: return "应用"
+        case .apps: return "应用源"
         case .signed: return "已签名"
         case .files: return "文件"
         case .downloads: return "下载"
@@ -16,7 +16,7 @@ enum YTab: Int, CaseIterable {
 
     var icon: String {
         switch self {
-        case .apps: return "square.grid.2x2.fill"
+        case .apps: return "shippingbox.fill"
         case .signed: return "checkmark.seal.fill"
         case .files: return "folder.fill"
         case .downloads: return "arrow.down.circle.fill"
