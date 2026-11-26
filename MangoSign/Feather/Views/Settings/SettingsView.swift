@@ -39,7 +39,7 @@ struct SettingsView: View {
 	}
 
 	var body: some View {
-		NBNavigationView("") {
+		NBNavigationView("设置") {
 			ScrollView {
 				VStack(spacing: 14) {
 					_profileCard()
@@ -56,7 +56,7 @@ struct SettingsView: View {
 			}
 			.background(HiboxTheme.background)
 			.scrollIndicators(.hidden)
-			.toolbar(.hidden, for: .navigationBar)
+			.navigationBarTitleDisplayMode(.inline)
 			.sheet(isPresented: $_isSourcesPresenting) {
 				SourcesView()
 			}

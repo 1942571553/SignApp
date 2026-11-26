@@ -100,6 +100,7 @@ extension StoreView {
 	struct StoreApp: Identifiable {
 		let source: ASRepository
 		let sourceURL: URL?
+		let sourceTitle: String
 		let app: ASRepository.App
 
 		var id: String { app.currentUniqueId }
@@ -154,12 +155,9 @@ extension StoreView {
 		if category.contains("game") || category.contains("游戏") {
 			return .games
 		}
-		if category.contains("util")
-			|| category.contains("tool")
-			|| category.contains("tweak")
+		if category.contains("tweak")
 			|| category.contains("jailbreak")
 			|| category.contains("插件")
-			|| category.contains("工具")
 			|| category.contains("越狱") {
 			return .tools
 		}
@@ -172,17 +170,20 @@ extension StoreView {
 
 		if _sources.isEmpty && !UserDefaults.standard.bool(forKey: "Hibox.seededSampleSource") {
 			UserDefaults.standard.set(true, forKey: "Hibox.seededSampleSource")
-			if let url = URL(string: "https://apps.altstore.io") {
-				Storage.shared.addSource(
-					url,
-					name: "示例源 · AltStore",
-					identifier: "com.yixiangsign.sample.altstore"
-				) { _ in
-					DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-						_isLoading = false
-						_loadApps()
-					}
-				}
+
+			let defaults: [(String, String, String)] = [
+				("https://apps.doc.hiuc.cn", "云端精选源", "com.yixiangsign.source.cloud"),
+				("https://apps.altstore.io", "AltStore 官方源", "com.yixiangsign.source.altstore")
+			]
+
+			for (urlString, name, identifier) in defaults {
+				guard let url = URL(string: urlString) else { continue }
+				Storage.shared.addSource(url, name: name, identifier: identifier) { _ in }
+			}
+
+			DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+				_isLoading = false
+				_loadApps()
 			}
 		}
 
@@ -201,9 +202,23 @@ extension StoreView {
 					if ["com.rileytestut.AltStore", "com.rileytestut.AltStore.Beta"].contains(app.id ?? "") {
 						continue
 					}
+					if app.beta == true || (app.id ?? "").hasSuffix(".Beta") {
+						continue
+					}
+					if ["嗨签", "嗨云趣", "应用说明"].contains(app.currentName) {
+						continue
+					}
+					if let download = app.downloadURL?.absoluteString, download.contains("Hibox.ipa") {
+						continue
+					}
 					seen.insert(uniqueID)
 					items.append(
-						StoreApp(source: repository, sourceURL: source.sourceURL, app: app)
+						StoreApp(
+							source: repository,
+							sourceURL: source.sourceURL,
+							sourceTitle: source.name ?? "软件源",
+							app: app
+						)
 					)
 				}
 			}
@@ -464,7 +479,7 @@ extension StoreView {
 					}
 
 					HStack(spacing: 5) {
-						Text(item.app.id ?? item.source.name ?? "")
+						Text(item.app.id ?? item.app.developer ?? item.sourceTitle)
 							.font(.caption2)
 							.foregroundStyle(HiboxTheme.secondaryText)
 							.lineLimit(1)
