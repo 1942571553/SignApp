@@ -34,6 +34,20 @@ enum YTheme {
         endPoint: .bottomTrailing
     )
 
+    /// 首页的马卡龙背景：淡紫 -> 淡粉 -> 淡薄荷，保持艺祥签的紫色主色。
+    static let homeBackground = LinearGradient(
+        colors: [
+            Color(red: 0.980, green: 0.949, blue: 1.000),
+            Color(red: 1.000, green: 0.937, blue: 0.971),
+            Color(red: 0.918, green: 0.988, blue: 0.957)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// 首页半透明玻璃卡片的填充色。
+    static let glass = Color.white.opacity(0.58)
+
     static let radius: CGFloat = 18
     static let largeRadius: CGFloat = 24
 }

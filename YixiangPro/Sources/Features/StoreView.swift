@@ -1,53 +1,127 @@
 import SwiftUI
+import Foundation
 
 struct StoreView: View {
     @EnvironmentObject private var model: AppModel
-    @ObservedObject private var downloads = DownloadManager.shared
     @State private var query = ""
     @State private var category = "全部"
-    @State private var showAccount = false
+    @State private var showSearch = false
+    @State private var showSources = false
+    @State private var selectedSourceID: String?
     @State private var redeemSource: RemoteSource?
 
+    private var selectedSource: RemoteSource? {
+        if let id = selectedSourceID, let source = model.sources.first(where: { $0.id == id }) {
+            return source
+        }
+        return model.sources.first
+    }
+
+    private var scopedApps: [StoreItem] {
+        guard let source = selectedSource else { return model.apps }
+        return model.apps.filter { $0.source.id == source.id }
+    }
+
     private var categories: [String] {
-        var values = ["全部", "应用", "游戏", "工具", "插件"]
-        let extra = Set(model.apps.compactMap { $0.app.category?.isEmpty == false ? $0.app.category! : nil })
+        var values = ["全部", "未分类", "应用", "游戏", "影音", "工具", "插件"]
+        let extra = Set(scopedApps.compactMap { item -> String? in
+            let value = item.app.category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return value.isEmpty ? nil : value
+        })
         values.append(contentsOf: extra.filter { !values.contains($0) }.sorted())
         return values
     }
 
     private var filtered: [StoreItem] {
-        model.apps.filter { item in
+        scopedApps.filter { item in
             let matchesQuery = query.isEmpty
                 || item.app.displayName.localizedCaseInsensitiveContains(query)
                 || item.app.summary.localizedCaseInsensitiveContains(query)
                 || item.app.bundleID.localizedCaseInsensitiveContains(query)
             guard matchesQuery else { return false }
             guard category != "全部" else { return true }
-            let cat = item.app.category ?? ""
-            if category == "应用" { return cat.isEmpty || cat.contains("应用") || cat.contains("Utilities") }
-            return cat.localizedCaseInsensitiveContains(category)
+
+            let rawCategory = item.app.category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let lower = rawCategory.lowercased()
+            let type = item.app.type?.value ?? ""
+
+            switch category {
+            case "未分类":
+                return rawCategory.isEmpty
+            case "应用":
+                return rawCategory.isEmpty
+                    || lower.contains("应用")
+                    || lower.contains("utility")
+                    || lower.contains("utilities")
+            case "游戏":
+                return lower.contains("游戏") || lower.contains("game")
+            case "影音":
+                return lower.contains("影音")
+                    || lower.contains("视频")
+                    || lower.contains("video")
+                    || lower.contains("音乐")
+                    || lower.contains("music")
+                    || lower.contains("entertainment")
+            case "工具":
+                return lower.contains("工具")
+                    || lower.contains("tool")
+                    || lower.contains("utility")
+                    || lower.contains("utilities")
+            case "插件":
+                return type == "1"
+                    || lower.contains("插件")
+                    || lower.contains("plugin")
+            default:
+                return rawCategory.localizedCaseInsensitiveContains(category)
+            }
         }
+    }
+
+    private var recentCount: Int {
+        let cutoff = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        return scopedApps.filter { item in
+            guard let date = item.app.versionDate?.date else { return false }
+            return date >= cutoff
+        }.count
+    }
+
+    private var expiryDate: Date? {
+        if let expires = selectedSource?.expiresAt, expires > 0 {
+            return Date(timeIntervalSince1970: TimeInterval(expires))
+        }
+        if let expires = model.user?.expiresAt, expires > 0 {
+            return Date(timeIntervalSince1970: TimeInterval(expires))
+        }
+        return nil
     }
 
     var body: some View {
         NavigationView {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    header
+                VStack(spacing: 14) {
+                    topBar
+
+                    if showSearch {
+                        searchBar
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    categoryBar
+                    sourceCard
+
                     if let announcement = model.announcement, !announcement.isEmpty {
                         announcementCard(announcement)
                     }
+
                     if model.isGloballyLocked {
                         globalLockCard
                     }
-                    searchBar
-                    categoryBar
-                    sourceStrip
+
                     if filtered.isEmpty {
                         YEmpty(
                             icon: "shippingbox",
                             title: model.isLoading ? "正在同步软件源" : "暂无应用",
-                            message: model.isLoading ? "正在从服务端拉取应用数据…" : "服务端还没有可用软件源，或者当前分类没有应用。",
+                            message: model.isLoading ? "正在从服务端拉取应用数据…" : "当前软件源还没有应用，或者当前分类没有应用。",
                             action: { model.refreshStore() },
                             actionTitle: "重新加载"
                         )
@@ -56,85 +130,246 @@ struct StoreView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 28)
             }
-            .background(YTheme.background.ignoresSafeArea())
+            .background(YTheme.homeBackground.ignoresSafeArea())
             .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showAccount) { AccountView() }
+        .sheet(isPresented: $showSources) {
+            SourcePickerView(selectedSourceID: $selectedSourceID)
+                .environmentObject(model)
+        }
         .sheet(item: $redeemSource) { source in
             CardRedeemView(source: source)
                 .environmentObject(model)
         }
+        .onAppear {
+            if selectedSourceID == nil {
+                selectedSourceID = model.sources.first?.id
+            }
+        }
+        .onChange(of: model.sources) { sources in
+            if selectedSourceID == nil {
+                selectedSourceID = sources.first?.id
+            } else if let id = selectedSourceID, !sources.contains(where: { $0.id == id }) {
+                selectedSourceID = sources.first?.id
+            }
+        }
+        .onChange(of: selectedSourceID) { _ in
+            category = "全部"
+            query = ""
+        }
         .overlay {
             if !model.allowStore {
                 FeatureOffView(title: "软件源商店已关闭", message: "管理员已在服务端关闭软件源商店，可在设置中刷新配置或联系管理员。")
-                    .background(YTheme.background)
+                    .background(YTheme.homeBackground)
             }
         }
     }
 
-    private var header: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(YTheme.gradient)
-            Circle().fill(Color.white.opacity(0.15)).frame(width: 150, height: 150).offset(x: 65, y: -55)
-            Circle().fill(Color.white.opacity(0.08)).frame(width: 100, height: 100).offset(x: 30, y: 55)
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.displayName)
-                            .font(.system(size: 27, weight: .heavy))
-                            .foregroundColor(.white)
-                        Text(model.subtitle)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.78))
+    // MARK: - 顶部导航
+
+    private var topBar: some View {
+        ZStack {
+            Text("应用列表")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(YTheme.text)
+
+            HStack(spacing: 8) {
+                Button {
+                    showSources = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "shippingbox.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("软件源")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    Spacer()
-                    Button { showAccount = true } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: model.isLoggedIn ? "person.crop.circle.fill" : "person.crop.circle")
-                            Text(model.isLoggedIn ? (model.user?.username ?? "账号") : "登录")
-                                .font(.caption.weight(.semibold))
+                    .foregroundColor(YTheme.purple)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(Color.white.opacity(0.58))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.75), lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 0) {
+                    topIconButton("magnifyingglass") {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            showSearch.toggle()
+                            if !showSearch { query = "" }
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color.white.opacity(0.18))
-                        .clipShape(Capsule())
+                    }
+                    Rectangle()
+                        .fill(YTheme.border.opacity(0.55))
+                        .frame(width: 0.6, height: 18)
+                    topIconButton("arrow.down.to.line") {
+                        model.requestedTab = "downloads"
+                    }
+                }
+                .padding(4)
+                .background(Color.white.opacity(0.58))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(0.75), lineWidth: 1))
+            }
+        }
+        .frame(height: 40)
+    }
+
+    private func topIconButton(_ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(YTheme.purple)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(YTheme.purple.opacity(0.8))
+            TextField("搜索应用、Bundle ID", text: $query)
+                .font(.subheadline)
+                .foregroundColor(YTheme.text)
+                .disableAutocorrection(true)
+                .autocapitalization(.none)
+            if !query.isEmpty {
+                Button { query = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundColor(YTheme.muted)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    showSearch = false
+                    query = ""
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(YTheme.muted)
+                    .frame(width: 22, height: 22)
+                    .background(Color.white.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(YTheme.glass)
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(Color.white.opacity(0.7), lineWidth: 1)
+        )
+    }
+
+    // MARK: - 分类
+
+    private var categoryBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(categories, id: \.self) { value in
+                    Button { category = value } label: {
+                        Text(value)
+                            .font(.system(size: 12, weight: category == value ? .bold : .medium))
+                            .foregroundColor(category == value ? .white : YTheme.muted)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 7)
+                            .background(category == value
+                                        ? AnyView(YTheme.gradient)
+                                        : AnyView(Color.white.opacity(0.52)))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(category == value ? Color.clear : Color.white.opacity(0.6), lineWidth: 0.8)
+                            )
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .animation(.easeInOut(duration: 0.16), value: category)
                 }
-                HStack(spacing: 0) {
-                    stat("\(model.apps.count)", "应用")
-                    divider
-                    stat("\(model.sources.count)", "软件源")
-                    divider
-                    stat("\(model.signed.count)", "已签名")
-                    Spacer()
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                .padding(.top, 2)
             }
-            .padding(20)
+            .padding(.vertical, 1)
         }
-        .frame(height: 158)
-        .clipped()
     }
 
-    private var divider: some View {
-        Rectangle().fill(Color.white.opacity(0.24)).frame(width: 0.7, height: 24).padding(.horizontal, 18)
+    // MARK: - 源信息卡
+
+    private var sourceCard: some View {
+        VStack(spacing: 6) {
+            Text(selectedSource?.name ?? "未配置软件源")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(YTheme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            if selectedSource == nil {
+                Text("管理员还没有配置默认软件源")
+                    .font(.footnote)
+                    .foregroundColor(YTheme.muted)
+                    .padding(.bottom, 3)
+            }
+
+            sourceInfoLine("刷新时间", dateText(model.lastSync))
+            sourceInfoLine("到期时间", dateText(expiryDate))
+            sourceInfoLine("软件个数", "\(scopedApps.count)")
+            sourceInfoLine("近期数量", "\(recentCount)")
+            sourceInfoLine("拉黑数量", "0")
+            sourceInfoLine("设备", APIClient.shared.deviceID)
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+
+            if let source = selectedSource, let reason = source.lockReason {
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(YTheme.orange)
+                    Text(reason)
+                        .font(.caption2.weight(.medium))
+                        .foregroundColor(YTheme.orange)
+                    Spacer(minLength: 4)
+                    if source.requiresCard && !source.unlocked {
+                        Button("解锁") { redeemSource = source }
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 5)
+                            .background(YTheme.gradient)
+                            .clipShape(Capsule())
+                            .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 17)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(YTheme.glass)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.72), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.055), radius: 18, x: 0, y: 8)
     }
 
-    private func stat(_ value: String, _ title: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 17, weight: .bold)).foregroundColor(.white)
-            Text(title).font(.system(size: 9.5)).foregroundColor(.white.opacity(0.7))
-        }
+    private func sourceInfoLine(_ title: String, _ value: String) -> some View {
+        Text("\(title)：\(value)")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(YTheme.text.opacity(0.78))
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .minimumScaleFactor(0.76)
     }
 
     private func announcementCard(_ text: String) -> some View {
@@ -150,7 +385,13 @@ struct StoreView: View {
                 .lineLimit(2)
             Spacer(minLength: 0)
         }
-        .yCard(12)
+        .padding(12)
+        .background(YTheme.glass)
+        .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .stroke(Color.white.opacity(0.65), lineWidth: 0.8)
+        )
     }
 
     private var globalLockCard: some View {
@@ -165,160 +406,219 @@ struct StoreView: View {
                 Text(model.globalLock?.reason ?? "当前 App 受服务端时间限制，请稍后再试")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.82))
+                    .lineLimit(2)
             }
             Spacer()
         }
         .padding(14)
         .background(LinearGradient(colors: [YTheme.violet, YTheme.pink], startPoint: .leading, endPoint: .trailing))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundColor(YTheme.muted)
-            TextField("搜索应用、Bundle ID", text: $query)
-                .font(.subheadline)
-                .foregroundColor(YTheme.text)
-            if !query.isEmpty {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundColor(YTheme.muted) }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(YTheme.border, lineWidth: 0.8))
-    }
-
-    private var categoryBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(categories, id: \.self) { value in
-                    Button { category = value } label: {
-                        Text(value)
-                            .font(.caption.weight(category == value ? .bold : .medium))
-                            .foregroundColor(category == value ? .white : YTheme.muted)
-                            .padding(.horizontal, 13)
-                            .padding(.vertical, 7)
-                            .background(category == value ? AnyView(YTheme.gradient) : AnyView(Color.white))
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(category == value ? Color.clear : YTheme.border, lineWidth: 0.7))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-            .padding(.vertical, 1)
-        }
-    }
-
-    private var sourceStrip: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            YSectionTitle(title: "软件源", subtitle: "服务端下发", trailing: "\(model.sources.count) 个")
-            if model.sources.isEmpty {
-                Text("管理员还没有配置默认软件源")
-                    .font(.footnote)
-                    .foregroundColor(YTheme.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .yCard(12)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(model.sources) { source in
-                            Button {
-                                if let reason = source.lockReason {
-                                    if source.requiresCard && !source.unlocked { redeemSource = source }
-                                    else { model.message = reason }
-                                } else {
-                                    redeemSource = nil
-                                }
-                            } label: {
-                                sourceChip(source)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func sourceChip(_ source: RemoteSource) -> some View {
-        HStack(spacing: 9) {
-            YRemoteIcon(url: source.iconLink, fallback: source.name, size: 34)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(source.name).font(.caption.weight(.semibold)).foregroundColor(YTheme.text).lineLimit(1)
-                Text(source.lockReason ?? "已启用").font(.system(size: 9)).foregroundColor(source.lockReason == nil ? YTheme.green : YTheme.orange)
-            }
-            if source.lockReason != nil {
-                Image(systemName: "lock.fill").font(.system(size: 9)).foregroundColor(YTheme.orange)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(YTheme.border, lineWidth: 0.7))
-    }
+    // MARK: - 应用列表
 
     private var appList: some View {
-        VStack(spacing: 10) {
-            YSectionTitle(title: "全部应用", subtitle: "源驱动商店", trailing: "\(filtered.count) 款")
-            LazyVStack(spacing: 10) {
-                ForEach(filtered) { item in
-                    NavigationLink(destination: StoreDetailView(item: item)) {
-                        StoreAppRow(item: item)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
+        LazyVStack(spacing: 11) {
+            ForEach(filtered) { item in
+                StoreAppRow(item: item)
             }
         }
     }
+
+    private func dateText(_ date: Date?) -> String {
+        guard let date else { return "—" }
+        return Self.timestampFormatter.string(from: date)
+    }
+
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter
+    }()
 }
+
+// MARK: - 应用卡片
 
 struct StoreAppRow: View {
     let item: StoreItem
 
+    private var badge: String {
+        item.app.type?.value == "1" ? "插件" : "应用"
+    }
+
+    private var badgeColor: Color {
+        item.app.type?.value == "1" ? YTheme.violet : YTheme.blue
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            YRemoteIcon(url: item.app.iconLink, fallback: item.app.displayName, size: 54)
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 12) {
+            YRemoteIcon(url: item.app.iconLink, fallback: item.app.displayName, size: 60)
+
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
-                    Text(item.app.displayName).font(.system(size: 15, weight: .semibold)).foregroundColor(YTheme.text).lineLimit(1)
-                    if let type = item.app.type?.value, type == "1" {
-                        YSoftPill(title: "插件", color: YTheme.violet)
-                    }
+                    Text(item.app.displayName)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(YTheme.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    YSoftPill(title: badge, color: badgeColor)
                 }
-                Text(item.app.summary.isEmpty ? item.app.bundleID : item.app.summary)
-                    .font(.caption).foregroundColor(YTheme.muted).lineLimit(1)
-                HStack(spacing: 7) {
-                    Text(item.app.version.map { "v\($0)" } ?? "—")
+
+                HStack(spacing: 5) {
+                    Text(item.app.version ?? "—")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(YTheme.red)
                     Text(sizeText)
-                    Text(item.app.versionDate.map { Self.dateFormatter.string(from: $0.date) } ?? "")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(YTheme.orange)
+                    Text(item.app.versionDate.map { "更新于 \(Self.dateTimeFormatter.string(from: $0.date))" } ?? "")
+                        .font(.system(size: 9))
+                        .foregroundColor(YTheme.muted)
                 }
-                .font(.system(size: 9.5))
-                .foregroundColor(YTheme.muted.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text(item.app.summary.isEmpty ? item.app.bundleID : item.app.summary)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(YTheme.muted)
+                    .lineLimit(1)
             }
-            Spacer(minLength: 2)
-            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundColor(YTheme.muted.opacity(0.6))
+
+            Spacer(minLength: 4)
+
+            NavigationLink(destination: StoreDetailView(item: item)) {
+                Text("查看")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(YTheme.purple)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.42))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(YTheme.purple.opacity(0.55), lineWidth: 1))
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .yCard(11)
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(YTheme.glass)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .stroke(Color.white.opacity(0.68), lineWidth: 0.9)
+        )
+        .shadow(color: Color.black.opacity(0.045), radius: 12, x: 0, y: 5)
     }
 
     private var sizeText: String {
-        guard let size = item.app.size else { return "" }
-        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+        guard let size = item.app.size, size > 0 else { return "[0.00M]" }
+        return String(format: "[%.2fM]", Double(size) / 1_048_576.0)
     }
 
     static let dateFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static let dateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
     }()
 }
+
+// MARK: - 软件源选择
+
+struct SourcePickerView: View {
+    @EnvironmentObject private var model: AppModel
+    @Binding var selectedSourceID: String?
+    @Environment(\.presentationMode) private var presentationMode
+
+    var body: some View {
+        NavigationView {
+            List {
+                if model.sources.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("还没有软件源")
+                            .font(.headline)
+                            .foregroundColor(YTheme.text)
+                        Text("管理员还没有在服务端配置默认软件源。")
+                            .font(.footnote)
+                            .foregroundColor(YTheme.muted)
+                        Button("重新加载") {
+                            model.refreshConfig()
+                            model.refreshStore()
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(YTheme.purple)
+                    }
+                    .padding(.vertical, 8)
+                    .listRowBackground(Color.clear)
+                } else {
+                    Section(header: Text("服务端下发")) {
+                        ForEach(model.sources) { source in
+                            Button {
+                                selectedSourceID = source.id
+                                presentationMode.wrappedValue.dismiss()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    YRemoteIcon(url: source.iconLink, fallback: source.name, size: 38)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(source.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundColor(YTheme.text)
+                                        Text(source.lockReason ?? "已启用")
+                                            .font(.caption2)
+                                            .foregroundColor(source.lockReason == nil ? YTheme.green : YTheme.orange)
+                                    }
+                                    Spacer()
+                                    if selectedSourceID == source.id || (selectedSourceID == nil && model.sources.first?.id == source.id) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(YTheme.purple)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    Section {
+                        Button {
+                            model.refreshConfig()
+                            model.refreshStore()
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.clockwise")
+                                Text("刷新软件源")
+                            }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(YTheme.purple)
+                        }
+                    }
+                }
+            }
+            .listStyle(InsetGroupedListStyle())
+            .navigationTitle("选择软件源")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") { presentationMode.wrappedValue.dismiss() }
+                        .foregroundColor(YTheme.purple)
+                }
+            }
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }
+}
+
+// MARK: - 应用详情
 
 struct StoreDetailView: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject private var downloads = DownloadManager.shared
     let item: StoreItem
-    @State private var showAccount = false
     @State private var installError: String?
 
     var body: some View {
@@ -394,7 +694,6 @@ struct StoreDetailView: View {
         } message: {
             Text(installError ?? "")
         }
-        .sheet(isPresented: $showAccount) { AccountView() }
     }
 
     private func infoRow(_ title: String, _ value: String) -> some View {

@@ -33,7 +33,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            YTheme.background.ignoresSafeArea()
+            YTheme.homeBackground.ignoresSafeArea()
             Group {
                 switch selected {
                 case .apps: StoreView()
@@ -44,7 +44,7 @@ struct RootView: View {
                 case .settings: SettingsView()
                 }
             }
-            .padding(.bottom, 62)
+            .padding(.bottom, 82)
 
             tabBar
 
@@ -97,24 +97,36 @@ struct RootView: View {
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: tab.icon)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                         Text(tab.title)
-                            .font(.system(size: 9.5, weight: .medium))
+                            .font(.system(size: 8.8, weight: .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundColor(selected == tab ? YTheme.purple : YTheme.muted.opacity(0.82))
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(selected == tab ? YTheme.purple.opacity(0.10) : Color.clear)
+                    )
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 9)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(
-            Color.white
-                .overlay(Rectangle().fill(YTheme.border).frame(height: 0.6), alignment: .top)
-                .ignoresSafeArea(edges: .bottom)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.78))
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.72), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 6)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 6)
     }
 }
