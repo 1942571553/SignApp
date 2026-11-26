@@ -221,6 +221,10 @@ struct SignOptions {
     var name: String
     var bundleID: String
     var version: String
+    var minOS: String = ""
+    var removePlugIns: Bool = false
+    var removeWatch: Bool = false
+    var injectDylibPath: String? = nil
 }
 
 enum DeepLinkRoute: Equatable {

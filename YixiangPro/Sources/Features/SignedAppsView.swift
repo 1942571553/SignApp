@@ -234,6 +234,11 @@ struct SigningSheet: View {
     @State private var busy = false
     @State private var error: String?
     @State private var done = false
+    @State private var minOS = ""
+    @State private var removePlugIns = false
+    @State private var removeWatch = false
+    @State private var dylibURL: URL?
+    @State private var showDylibPicker = false
 
     init(app: ImportedApp) {
         self.app = app
@@ -298,6 +303,23 @@ struct SigningSheet: View {
                     }
                     .yCard(14)
 
+                    VStack(alignment: .leading, spacing: 10) {
+                        YSectionTitle(title: "高级补丁", subtitle: "可选")
+                        input("最低系统版本（留空不改）", $minOS)
+                        Toggle("删除 PlugIns（插件）", isOn: $removePlugIns).font(.caption).tint(YTheme.purple)
+                        Toggle("删除 Watch（手表 App）", isOn: $removeWatch).font(.caption).tint(YTheme.purple)
+                        Button { showDylibPicker = true } label: {
+                            HStack {
+                                Image(systemName: "syringe.fill").foregroundColor(YTheme.violet)
+                                Text(dylibURL?.lastPathComponent ?? "注入 Dylib（可选）").font(.caption).foregroundColor(dylibURL == nil ? YTheme.muted : YTheme.text)
+                                Spacer()
+                                if dylibURL != nil { Button { dylibURL = nil } label: { Image(systemName: "xmark.circle.fill").foregroundColor(YTheme.muted) } }
+                            }
+                            .padding(10).background(YTheme.background).clipShape(RoundedRectangle(cornerRadius: 10))
+                        }.buttonStyle(PlainButtonStyle())
+                    }
+                    .yCard(14)
+
                     if let error { Text(error).font(.caption).foregroundColor(YTheme.red).multilineTextAlignment(.center) }
                     YPrimaryButton(title: busy ? "正在签名…" : "开始签名", icon: "signature", enabled: !busy && selectedCert != nil) {
                         sign()
@@ -317,6 +339,9 @@ struct SigningSheet: View {
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
             if certID.isEmpty { certID = model.defaultCertificate()?.id ?? "" }
+        }
+        .fileImporter(isPresented: $showDylibPicker, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result { dylibURL = urls.first }
         }
     }
 
@@ -339,7 +364,7 @@ struct SigningSheet: View {
         guard let cert = selectedCert else { return }
         busy = true
         error = nil
-        model.sign(app, certificate: cert, options: SignOptions(name: name, bundleID: bundleID, version: version)) { ok, message in
+        model.sign(app, certificate: cert, options: SignOptions(name: name, bundleID: bundleID, version: version, minOS: minOS, removePlugIns: removePlugIns, removeWatch: removeWatch, injectDylibPath: dylibURL?.path)) { ok, message in
             busy = false
             if ok {
                 done = true

@@ -28,6 +28,7 @@ struct ToolsView: View {
             ToolItem(title: "缓存清理", subtitle: "释放本机空间", icon: "trash.fill", color: YTheme.pink, destination: AnyView(CacheCleanView())),
             ToolItem(title: "UDID 获取", subtitle: "描述文件登记", icon: "number", color: YTheme.cyan, destination: AnyView(UDIDView())),
             ToolItem(title: "二维码分发", subtitle: "上传并生成链接", icon: "qrcode", color: YTheme.blue, destination: AnyView(DistributeView())),
+            ToolItem(title: "开发者工具", subtitle: "证书 / 补丁 / 分发", icon: "hammer.fill", color: YTheme.violet, destination: AnyView(DeveloperToolsView().environmentObject(model))),
             ToolItem(title: "签名环境", subtitle: "zsign / 证书检查", icon: "signature", color: YTheme.purple, destination: AnyView(SigningEnvironmentView())),
             ToolItem(title: "文件导出", subtitle: "分享沙盒文件", icon: "square.and.arrow.up", color: YTheme.orange, destination: AnyView(FileExportView()))
         ]

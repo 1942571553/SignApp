@@ -302,6 +302,20 @@ final class AppModel: ObservableObject {
             try FileManager.default.createDirectory(at: payload, withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: URL(fileURLWithPath: app.appPath), to: target)
             try Self.patchInfo(target, options: options)
+            if options.removePlugIns {
+                try? FileManager.default.removeItem(at: target.appendingPathComponent("PlugIns"))
+            }
+            if options.removeWatch {
+                try? FileManager.default.removeItem(at: target.appendingPathComponent("Watch"))
+            }
+            if let dylibPath = options.injectDylibPath {
+                let dylib = URL(fileURLWithPath: dylibPath)
+                let destination = target.appendingPathComponent(dylib.lastPathComponent)
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.copyItem(at: dylib, to: destination)
+                let executable = target.appendingPathComponent(try Self.infoPlist(target)["CFBundleExecutable"] as? String ?? target.deletingPathExtension().lastPathComponent)
+                _ = Zsign.injectDyLib(appExecutable: executable.path, with: "@executable_path/\(dylib.lastPathComponent)", weak: true)
+            }
             let ent = try Self.entitlements(from: certificate.provisionPath)
             let entURL = folder.appendingPathComponent("entitlements.plist")
             try ent.write(to: entURL, atomically: true, encoding: .utf8)
@@ -380,6 +394,7 @@ final class AppModel: ObservableObject {
         plist["CFBundleName"] = options.name
         plist["CFBundleIdentifier"] = options.bundleID
         plist["CFBundleShortVersionString"] = options.version
+        if !options.minOS.isEmpty { plist["MinimumOSVersion"] = options.minOS }
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try data.write(to: url)
     }
