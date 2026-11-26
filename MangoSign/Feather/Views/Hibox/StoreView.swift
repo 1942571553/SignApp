@@ -170,6 +170,22 @@ extension StoreView {
 		guard !_isLoading else { return }
 		_isLoading = true
 
+		if _sources.isEmpty && !UserDefaults.standard.bool(forKey: "Hibox.seededSampleSource") {
+			UserDefaults.standard.set(true, forKey: "Hibox.seededSampleSource")
+			if let url = URL(string: "https://apps.altstore.io") {
+				Storage.shared.addSource(
+					url,
+					name: "示例源 · AltStore",
+					identifier: "com.yixiangsign.sample.altstore"
+				) { _ in
+					DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+						_isLoading = false
+						_loadApps()
+					}
+				}
+			}
+		}
+
 		Task {
 			await _sourcesViewModel.fetchSources(_sources)
 
@@ -181,6 +197,10 @@ extension StoreView {
 				for app in repository.apps {
 					let uniqueID = app.currentUniqueId
 					guard !seen.contains(uniqueID) else { continue }
+					// 示例源里不再展示 AltStore 安装器本身，避免和艺祥签的签名能力混淆
+					if ["com.rileytestut.AltStore", "com.rileytestut.AltStore.Beta"].contains(app.id ?? "") {
+						continue
+					}
 					seen.insert(uniqueID)
 					items.append(
 						StoreApp(source: repository, sourceURL: source.sourceURL, app: app)

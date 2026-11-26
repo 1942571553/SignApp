@@ -82,6 +82,18 @@ jobs:
           name: MangoSign-unsigned
           path: MangoSign/MangoSign-unsigned.ipa
 
+      - name: 保存 ipa 到仓库
+        if: success()
+        run: |
+          mkdir -p builds
+          cp MangoSign/MangoSign-unsigned.ipa builds/MangoSign-unsigned.ipa
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add builds/MangoSign-unsigned.ipa
+          git commit -m "build: ipa [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
+
       - name: 发布 Release
         id: release
         continue-on-error: true
