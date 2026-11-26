@@ -11,10 +11,7 @@ struct VariedTabbarView: View {
 	init() {}
 	
 	var body: some View {
-		if #available(iOS 18, *) {
-			ExtendedTabbarView()
-		} else {
-			TabbarView()
-		}
+		// ABox 式的固定五标签，避免 iPad / iOS 18 侧边栏把标签收起来
+		TabbarView()
 	}
 }

@@ -8,38 +8,42 @@
 import SwiftUI
 import NimbleViews
 
-/// 参考 ABox / 嗨签的四段式结构：应用、已签名、工具、我的
+/// ABox 五段式结构：应用、已签名、文件、下载、设置
 enum TabEnum: String, CaseIterable, Hashable {
 	case apps
 	case signed
-	case tools
-	case profile
+	case files
+	case downloads
+	case settings
 
 	var title: String {
 		switch self {
 		case .apps:			return "应用"
 		case .signed:		return "已签名"
-		case .tools:		return "工具"
-		case .profile:		return "我的"
+		case .files:		return "文件"
+		case .downloads:	return "下载"
+		case .settings:		return "设置"
 		}
 	}
 
 	var icon: String {
 		switch self {
-		case .apps:			return "square.grid.2x2.fill"
-		case .signed:		return "checkmark.seal.fill"
-		case .tools:		return "wrench.and.screwdriver.fill"
-		case .profile:		return "person.crop.circle.fill"
+		case .apps:			return "chevron.left.forwardslash.chevron.right"
+		case .signed:		return "square.stack.3d.up.fill"
+		case .files:		return "folder.fill"
+		case .downloads:	return "arrow.down.circle.fill"
+		case .settings:		return "gearshape.fill"
 		}
 	}
 
 	@ViewBuilder
 	static func view(for tab: TabEnum) -> some View {
 		switch tab {
-		case .apps:			AppListView(mode: .apps)
-		case .signed:		AppListView(mode: .signed)
-		case .tools:		ToolsView()
-		case .profile:		SettingsView()
+		case .apps:			StoreView()
+		case .signed:		SignedAppsView()
+		case .files:		FilesView()
+		case .downloads:		DownloadsView()
+		case .settings:		SettingsView()
 		}
 	}
 
@@ -47,8 +51,9 @@ enum TabEnum: String, CaseIterable, Hashable {
 		return [
 			.apps,
 			.signed,
-			.tools,
-			.profile
+			.files,
+			.downloads,
+			.settings
 		]
 	}
 

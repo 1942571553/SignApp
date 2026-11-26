@@ -40,20 +40,11 @@ struct FeatherApp: App {
 			}
 			// dear god help me
 			.onAppear {
-				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
-					UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
-				}
-				
-				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#E8933A"))
+				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .light
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(HiboxTheme.blue)
 
 				Task {
 					await BrandStore.shared.refresh()
-					if
-						let hex = BrandStore.shared.brand?.theme_color,
-						!hex.isEmpty
-					{
-						UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: hex))
-					}
 				}
 			}
 		}
