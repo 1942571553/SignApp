@@ -8,49 +8,50 @@
 import SwiftUI
 import NimbleViews
 
+/// 参考 ABox / 嗨签的四段式结构：应用、已签名、工具、我的
 enum TabEnum: String, CaseIterable, Hashable {
-	case home
-	case library
+	case apps
+	case signed
 	case tools
-	case settings
-	
+	case profile
+
 	var title: String {
 		switch self {
-		case .home:			return "首页"
-		case .library:		return "应用"
+		case .apps:			return "应用"
+		case .signed:		return "已签名"
 		case .tools:		return "工具"
-		case .settings:		return "我的"
+		case .profile:		return "我的"
 		}
 	}
-	
+
 	var icon: String {
 		switch self {
-		case .home:			return "house.fill"
-		case .library:		return "square.grid.2x2.fill"
+		case .apps:			return "square.grid.2x2.fill"
+		case .signed:		return "checkmark.seal.fill"
 		case .tools:		return "wrench.and.screwdriver.fill"
-		case .settings:		return "person.crop.circle.fill"
+		case .profile:		return "person.crop.circle.fill"
 		}
 	}
-	
+
 	@ViewBuilder
 	static func view(for tab: TabEnum) -> some View {
 		switch tab {
-		case .home:			HomeView()
-		case .library:		LibraryView()
+		case .apps:			AppListView(mode: .apps)
+		case .signed:		AppListView(mode: .signed)
 		case .tools:		ToolsView()
-		case .settings:		SettingsView()
+		case .profile:		SettingsView()
 		}
 	}
-	
+
 	static var defaultTabs: [TabEnum] {
 		return [
-			.home,
-			.library,
+			.apps,
+			.signed,
 			.tools,
-			.settings
+			.profile
 		]
 	}
-	
+
 	static var customizableTabs: [TabEnum] {
 		return []
 	}
