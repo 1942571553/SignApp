@@ -142,8 +142,8 @@ struct SystemInfoView: View {
     private var storageCard: some View {
         VStack(spacing: 10) {
             YSectionTitle(title: "存储")
-            YInfoLine(title: "总容量", value: bytes(FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())?[.systemSize] as? Int64))
-            YInfoLine(title: "剩余", value: bytes(FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())?[.systemFreeSize] as? Int64))
+            YInfoLine(title: "总容量", value: bytes((FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())[.systemSize] as? NSNumber)?.int64Value))
+            YInfoLine(title: "剩余", value: bytes((FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())[.systemFreeSize] as? NSNumber)?.int64Value))
             YInfoLine(title: "App 占用", value: bytes(folderSize(YFiles.root)))
         }.yCard(14)
     }

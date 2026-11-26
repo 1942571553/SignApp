@@ -594,7 +594,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_html(admin_users(conn))
             elif path == "/admin/sources":
                 if self.require_admin(conn):
-                    self.send_html(admin_sources(conn))
+                    self.send_html(admin_sources(conn, parse_int(query.get("edit"))))
             elif path == "/admin/cards":
                 if self.require_admin(conn):
                     self.send_html(admin_cards(conn))
@@ -1035,26 +1035,37 @@ def admin_users(conn):
 <footer>修改授权时间后，客户端下次同步配置即刻生效</footer></div></body></html>""" % (ADMIN_CSS, admin_nav("/admin/users"), len(users), rows)
 
 
-def admin_sources(conn):
+def admin_sources(conn, edit_id=None):
     sources = conn.execute("SELECT * FROM sources ORDER BY sort,id").fetchall()
+    edit = conn.execute("SELECT * FROM sources WHERE id=?", (edit_id,)).fetchone() if edit_id else None
+    v = {k: (edit[k] if edit else "") for k in ("id", "name", "url", "icon_url", "description", "price", "sort")}
+    v["requires_card"] = "checked" if edit and edit["requires_card"] else ""
+    v["enabled"] = "checked" if (not edit) or edit["enabled"] else ""
     rows = ""
     for s in sources:
-        rows += """<tr><td><b>%s</b><br><span class='mono'>%s</span></td><td>%s</td><td>%s</td><td>%s</td><td><span class='tag %s'>%s</span></td><td>
+        rows += """<tr><td><b><a href='/admin/sources?edit=%d'>%s</a></b><br><span class='mono'>%s</span></td><td>%s</td><td>%s</td><td>%s</td><td><span class='tag %s'>%s</span></td><td>
 <form method='post' action='/admin/source/toggle'><input type='hidden' name='id' value='%d'><button class='btn soft'>%s</button></form></td></tr>""" % (
-            esc(s["name"]), esc(s["url"]), "需要卡密" if s["requires_card"] else "免费", esc(s["price"] or "—"),
+            s["id"], esc(s["name"]), esc(s["url"]), "需要卡密" if s["requires_card"] else "免费", esc(s["price"] or "—"),
             ("%s ~ %s" % (fmt_time(s["time_start"]), fmt_time(s["time_end"]))) if (s["time_start"] or s["time_end"]) else "不限时",
             "green" if s["enabled"] else "red", "启用中" if s["enabled"] else "已停用", s["id"], "停用" if s["enabled"] else "启用")
-    return """<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>软件源 · 艺祥签</title>%s</head><body><div class='wrap'>
-<div class='hero'><h1>软件源管理</h1><p>服务端控制客户端默认软件源，支持卡密与时间窗口</p></div>%s
-<div class='card'><h2>新增 / 编辑软件源</h2><form method='post' action='/admin/source/save'><div class='two'>
-<div><label>源名称</label><input name='name' placeholder='例如：精选源'></div><div><label>源地址（AltStore JSON）</label><input name='url' placeholder='https://...'></div>
-<div><label>图标地址（可选）</label><input name='icon_url'></div><div><label>解锁价格文字（可选）</label><input name='price' placeholder='例如 ¥9.9 / 30天'></div>
-<div><label>开放开始（可选）</label><input type='datetime-local' name='time_start'></div><div><label>开放结束（可选）</label><input type='datetime-local' name='time_end'></div>
-</div><label>描述</label><textarea name='description' rows='2'></textarea>
-<div class='row' style='margin-top:10px'><label style='margin:0'><input type='checkbox' name='requires_card' value='1'> 需要卡密解锁</label><label style='margin:0'><input type='checkbox' name='enabled' value='1' checked> 启用</label><label style='margin:0'>排序 <input name='sort' value='0' style='width:70px;display:inline-block'></label></div>
-<input type='hidden' name='id' value=''><button style='margin-top:14px'>保存软件源</button></form></div>
-<div class='card'><h2>现有软件源（%d）</h2><table><tr><th>名称 / 地址</th><th>解锁</th><th>价格</th><th>开放时间</th><th>状态</th><th>操作</th></tr>%s</table></div>
-<footer>客户端启动时会拉取 /api/client/config，默认源由这里控制</footer></div></body></html>""" % (ADMIN_CSS, admin_nav("/admin/sources"), len(sources), rows)
+    return """<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>软件源 · 艺祥签</title>%(ADMIN_CSS)s</head><body><div class='wrap'>
+<div class='hero'><h1>软件源管理</h1><p>服务端控制客户端默认软件源，支持卡密与时间窗口</p></div>%(NAV)s
+<div class='card'><h2>%(heading)s</h2><form method='post' action='/admin/source/save'><div class='two'>
+<div><label>源名称</label><input name='name' value='%(name)s' placeholder='例如：精选源'></div><div><label>源地址（AltStore JSON）</label><input name='url' value='%(url)s' placeholder='https://...'></div>
+<div><label>图标地址（可选）</label><input name='icon_url' value='%(icon_url)s'></div><div><label>解锁价格文字（可选）</label><input name='price' value='%(price)s' placeholder='例如 ¥9.9 / 30天'></div>
+<div><label>开放开始（可选）</label><input type='datetime-local' name='time_start' value='%(time_start)s'></div><div><label>开放结束（可选）</label><input type='datetime-local' name='time_end' value='%(time_end)s'></div>
+</div><label>描述</label><textarea name='description' rows='2'>%(description)s</textarea>
+<div class='row' style='margin-top:10px'><label style='margin:0'><input type='checkbox' name='requires_card' value='1' %(requires_card)s> 需要卡密解锁</label><label style='margin:0'><input type='checkbox' name='enabled' value='1' %(enabled)s> 启用</label><label style='margin:0'>排序 <input name='sort' value='%(sort)s' style='width:70px;display:inline-block'></label></div>
+<input type='hidden' name='id' value='%(id)s'><button style='margin-top:14px'>保存软件源</button>%(cancel)s</form></div>
+<div class='card'><h2>现有软件源（%(COUNT)d）</h2><table><tr><th>名称 / 地址</th><th>解锁</th><th>价格</th><th>开放时间</th><th>状态</th><th>操作</th></tr>%(ROWS)s</table></div>
+<footer>客户端启动时会拉取 /api/client/config，默认源由这里控制</footer></div></body></html>""" % dict(
+        ADMIN_CSS=ADMIN_CSS, NAV=admin_nav("/admin/sources"), COUNT=len(sources), ROWS=rows,
+        heading=("编辑软件源：" + edit["name"]) if edit else "新增软件源",
+        name=esc(v["name"]), url=esc(v["url"]), icon_url=esc(v["icon_url"]), price=esc(v["price"]),
+        time_start=dt_local(edit["time_start"]) if edit else "", time_end=dt_local(edit["time_end"]) if edit else "",
+        description=esc(v["description"]), requires_card=v["requires_card"], enabled=v["enabled"], sort=esc(v["sort"]),
+        id=esc(v["id"]), cancel=("<a class='btn soft' href='/admin/sources' style='margin-left:8px'>取消</a>" if edit else "")
+    )
 
 
 def admin_cards(conn, generated=None):

@@ -67,7 +67,7 @@ struct DownloadsView: View {
                 HStack {
                     Text("已导入，去签名").font(.caption2).foregroundColor(YTheme.green)
                     Spacer()
-                    if let imported = model.imported.first(where: { $0.ipaPath == item.localPath }) {
+                    if let imported = model.imported.first(where: { $0.bundleID == item.bundleID }) {
                         Button("签名") { signTarget = imported }
                             .font(.caption.weight(.semibold)).foregroundColor(YTheme.purple)
                     }

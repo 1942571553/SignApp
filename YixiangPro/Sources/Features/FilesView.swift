@@ -4,7 +4,7 @@ import QuickLook
 import UniformTypeIdentifiers
 
 struct FileEntry: Identifiable, Hashable {
-    var id: String { path }
+    var id: String { url.path }
     let url: URL
     let name: String
     let isDirectory: Bool
@@ -118,7 +118,7 @@ struct FilesView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(item: Binding(get: { selectedFile.map(FileURL.init) }, set: { _ in selectedFile = nil })) { item in
+        .sheet(item: Binding(get: { selectedFile.map { FileURL(url: $0) } }, set: { _ in selectedFile = nil })) { item in
             QuickLookView(url: item.url)
         }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data], allowsMultipleSelection: true) { result in
@@ -219,6 +219,7 @@ struct FilesView: View {
 struct FileURL: Identifiable {
     let id = UUID()
     let url: URL
+    init(url: URL) { self.url = url }
 }
 
 struct FileBrowserView: View {
@@ -266,7 +267,7 @@ struct FileBrowserView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarHidden(false)
         .onAppear(perform: reload)
-        .sheet(item: Binding(get: { selectedFile.map(FileURL.init) }, set: { _ in selectedFile = nil })) { item in
+        .sheet(item: Binding(get: { selectedFile.map { FileURL(url: $0) } }, set: { _ in selectedFile = nil })) { item in
             QuickLookView(url: item.url)
         }
         .toolbar {
