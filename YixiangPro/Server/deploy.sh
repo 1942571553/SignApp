@@ -30,6 +30,7 @@ fi
 
 mkdir -p "$APP_DIR/data/installs" "$APP_DIR/data/uploads" "$APP_DIR/data/tmp"
 cp server.py "$APP_DIR/server.py"
+cp schema.sql "$APP_DIR/schema.sql"
 chown -R www:www "$APP_DIR"
 chmod 755 "$APP_DIR" "$APP_DIR/server.py"
 chmod -R 775 "$APP_DIR/data"

@@ -3,7 +3,10 @@ name: Build YixiangPro IPA
 on:
   push:
     paths:
-      - "YixiangPro/**"
+      - "YixiangPro/Sources/**"
+      - "YixiangPro/Resources/**"
+      - "YixiangPro/Vendor/**"
+      - "YixiangPro/project.yml"
       - ".github/workflows/build-yixiangpro.yml"
   workflow_dispatch:
 
