@@ -210,7 +210,7 @@ def setting(conn, key, default=""):
 
 
 def set_setting(conn, key, value):
-    conn.execute("INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+    conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (key, value))
 
 
 def setting_bool(conn, key):
@@ -426,8 +426,8 @@ def cleanup_installs(conn):
     for row in rows:
         for field in ("ipa_path", "icon_path"):
             try:
-                if row[field]:
-                    Path(row[field]).unlink(missing_ok=True)
+                if row[field] and Path(row[field]).exists():
+                    Path(row[field]).unlink()
             except Exception:
                 pass
         conn.execute("DELETE FROM installs WHERE token=?", (row["token"],))
@@ -789,7 +789,7 @@ class Handler(BaseHTTPRequestHandler):
                 fh.write(chunk)
                 remaining -= len(chunk)
         if ipa_path.stat().st_size == 0:
-            ipa_path.unlink(missing_ok=True)
+            if ipa_path.exists(): ipa_path.unlink()
             self.send_json({"ok": False, "message": "上传失败"}, 500); return
         icon_path = extract_icon(ipa_path, token)
         ttl = parse_int(setting(conn, "install_ttl_hours", "24"), 24) * 3600
