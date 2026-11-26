@@ -1,0 +1,127 @@
+name: Build YixiangPro IPA
+
+on:
+  push:
+    paths:
+      - "YixiangPro/**"
+      - ".github/workflows/build-yixiangpro.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 选择 Xcode
+        run: |
+          if [ -d /Applications/Xcode_26.3.0.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.0.app
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: 安装 XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: 生成工程
+        working-directory: YixiangPro
+        run: |
+          xcodegen generate
+          ls -la YixiangPro.xcodeproj
+
+      - name: 编译（未签名）
+        working-directory: YixiangPro
+        run: |
+          set -o pipefail
+          if ! xcodebuild \
+            -project YixiangPro.xcodeproj \
+            -scheme YixiangPro \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
+            > "$RUNNER_TEMP/build.log" 2>&1; then
+            echo "=== 编译失败，最后 300 行 ==="
+            tail -n 300 "$RUNNER_TEMP/build.log"
+            exit 1
+          fi
+          tail -n 30 "$RUNNER_TEMP/build.log"
+
+      - name: 组装 ipa
+        working-directory: YixiangPro
+        run: |
+          APP=$(find "$RUNNER_TEMP/dd" -name 'YixiangPro.app' -path '*Release-iphoneos*' -print -quit)
+          if [ -z "$APP" ]; then
+            echo "找不到 YixiangPro.app"; exit 1
+          fi
+          rm -rf out YixiangPro-unsigned.ipa
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/YixiangPro.app
+          chmod -R 0755 out/Payload/YixiangPro.app
+          cd out
+          /usr/bin/zip -qry ../YixiangPro-unsigned.ipa Payload
+          cd ..
+          ls -lh YixiangPro-unsigned.ipa
+          /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" out/Payload/YixiangPro.app/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" out/Payload/YixiangPro.app/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" out/Payload/YixiangPro.app/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :MinimumOSVersion" out/Payload/YixiangPro.app/Info.plist || true
+
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YixiangPro-unsigned
+          path: YixiangPro/YixiangPro-unsigned.ipa
+
+      - name: 保存 ipa 到仓库
+        if: success()
+        run: |
+          mkdir -p YixiangPro/builds
+          cp YixiangPro/YixiangPro-unsigned.ipa YixiangPro/builds/YixiangPro-unsigned.ipa
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add YixiangPro/builds/YixiangPro-unsigned.ipa
+          git commit -m "build: yixiangpro ipa [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true
+
+      - name: 发布 Release
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: yixiangpro-${{ github.run_number }}
+          name: YixiangPro build ${{ github.run_number }}
+          files: YixiangPro/YixiangPro-unsigned.ipa
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 失败诊断
+        if: failure()
+        run: |
+          mkdir -p ci-logs
+          {
+            echo "build=${{ steps.build.outcome }}"
+            echo "--- build.log tail ---"
+            tail -n 500 "$RUNNER_TEMP/build.log" 2>/dev/null || echo "no build.log"
+          } > ci-logs/yixiangpro-build.log
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add ci-logs/yixiangpro-build.log
+          git commit -m "ci: yixiangpro log [skip ci]" || true
+          git pull --rebase origin main || true
+          git push origin HEAD:main || true

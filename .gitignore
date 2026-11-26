@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+YixiangPro/Server/data/
+YixiangPro/builds/
