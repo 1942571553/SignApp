@@ -109,9 +109,21 @@ extension SettingsView {
 
 				Spacer(minLength: 0)
 
-				Image(systemName: "checkmark.shield.fill")
-					.font(.system(size: 22, weight: .semibold))
-					.foregroundStyle(.white.opacity(0.9))
+				NavigationLink {
+					ServiceCenterView()
+				} label: {
+					HStack(spacing: 5) {
+						Image(systemName: "person.crop.circle")
+							.font(.caption2.weight(.semibold))
+						Text("账号")
+							.font(.caption2.weight(.semibold))
+					}
+					.foregroundStyle(.white)
+					.padding(.horizontal, 10)
+					.padding(.vertical, 6)
+					.background(.white.opacity(0.18), in: Capsule())
+				}
+				.buttonStyle(.plain)
 			}
 
 			HStack(spacing: 0) {

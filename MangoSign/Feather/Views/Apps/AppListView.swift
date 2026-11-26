@@ -10,6 +10,8 @@
 import SwiftUI
 import CoreData
 import UIKit
+import AltSourceKit
+import NukeUI
 import NimbleViews
 import UniformTypeIdentifiers
 
@@ -64,8 +66,18 @@ struct AppListView: View {
 	@State private var _selectedAppUUIDs: Set<String> = []
 	@State private var _editMode: EditMode = .inactive
 	@State private var _searchText = ""
+	@State private var _featuredApps: [FeaturedApp] = []
+	@State private var _isFeaturedLoading = false
 
 	@Namespace private var _namespace
+
+	struct FeaturedApp: Identifiable {
+		let sourceURL: URL?
+		let source: ASRepository
+		let app: ASRepository.App
+
+		var id: String { app.currentUniqueId }
+	}
 
 	// MARK: Fetch
 	@FetchRequest(
@@ -128,6 +140,10 @@ struct AppListView: View {
 
 				if let announcement = _brand.announcement {
 					_announcementSection(announcement)
+				}
+
+				if !_isSignedMode {
+					_featuredSection()
 				}
 
 				_actionSection()
@@ -224,6 +240,16 @@ struct AppListView: View {
 					_selectedInstallAppPresenting = AnyApp(base: latest)
 				}
 			}
+			.onAppear {
+				if !_isSignedMode {
+					_loadFeaturedApps()
+				}
+			}
+			.onChange(of: _sources.count) { _ in
+				guard !_isSignedMode else { return }
+				_featuredApps = []
+				_loadFeaturedApps()
+			}
 			.onChange(of: _editMode) { newMode in
 				if newMode == .inactive {
 					_selectedAppUUIDs.removeAll()
@@ -275,6 +301,34 @@ extension AppListView {
 				.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 6, trailing: 16))
 				.listRowBackground(Color.clear)
 				.listRowSeparator(.hidden)
+		}
+	}
+
+	@ViewBuilder
+	private func _featuredSection() -> some View {
+		if !_featuredApps.isEmpty {
+			NBSection("热门推荐", secondary: "\(_featuredApps.count)") {
+				ScrollView(.horizontal, showsIndicators: false) {
+					HStack(spacing: 12) {
+						ForEach(_featuredApps) { item in
+							NavigationLink {
+								SourceAppsDetailView(
+									sourceURL: item.sourceURL,
+									source: item.source,
+									app: item.app
+								)
+							} label: {
+								_featuredCard(item.app)
+							}
+							.buttonStyle(.plain)
+						}
+					}
+					.padding(.vertical, 2)
+				}
+				.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 0))
+				.listRowBackground(Color.clear)
+				.listRowSeparator(.hidden)
+			}
 		}
 	}
 
@@ -675,6 +729,88 @@ extension AppListView {
 
 // MARK: - Rows & Empty
 extension AppListView {
+	@ViewBuilder
+	private func _featuredCard(_ app: ASRepository.App) -> some View {
+		VStack(alignment: .leading, spacing: 9) {
+			if let iconURL = app.iconURL {
+				LazyImage(url: iconURL) { state in
+					if let image = state.image {
+						image
+							.resizable()
+							.aspectRatio(contentMode: .fill)
+							.frame(width: 52, height: 52)
+							.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+					} else {
+						_featuredIconPlaceholder(app.currentName)
+					}
+				}
+			} else {
+				_featuredIconPlaceholder(app.currentName)
+			}
+
+			VStack(alignment: .leading, spacing: 3) {
+				Text(app.currentName)
+					.font(.subheadline.weight(.semibold))
+					.foregroundStyle(.primary)
+					.lineLimit(2)
+					.multilineTextAlignment(.leading)
+
+				Text(app.currentVersion ?? "—")
+					.font(.caption2)
+					.foregroundStyle(.secondary)
+			}
+		}
+		.frame(width: 112, height: 132, alignment: .topLeading)
+		.padding(12)
+		.background(
+			Color(uiColor: .secondarySystemGroupedBackground),
+			in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+		)
+	}
+
+	@ViewBuilder
+	private func _featuredIconPlaceholder(_ name: String) -> some View {
+		RoundedRectangle(cornerRadius: 14, style: .continuous)
+			.fill(_accent.opacity(0.12))
+			.frame(width: 52, height: 52)
+			.overlay {
+				Text(String(name.prefix(1)))
+					.font(.title3.weight(.bold))
+					.foregroundStyle(_accent)
+			}
+	}
+
+	private func _loadFeaturedApps() {
+		guard !_isFeaturedLoading else { return }
+		_isFeaturedLoading = true
+
+		Task {
+			await _sourcesViewModel.fetchSources(_sources)
+
+			var seen = Set<String>()
+			var items: [FeaturedApp] = []
+
+			for source in _sources {
+				guard let repository = _sourcesViewModel.sources[source] else { continue }
+				for app in repository.apps {
+					let uniqueID = app.currentUniqueId
+					guard !seen.contains(uniqueID) else { continue }
+					seen.insert(uniqueID)
+					items.append(
+						FeaturedApp(
+							sourceURL: source.sourceURL,
+							source: repository,
+							app: app
+						)
+					)
+				}
+			}
+
+			_featuredApps = Array(items.prefix(14))
+			_isFeaturedLoading = false
+		}
+	}
+
 	private func _sourceRow(title: String, subtitle: String, icon: String, color: Color) -> some View {
 		HStack(spacing: 13) {
 			Image(systemName: icon)
