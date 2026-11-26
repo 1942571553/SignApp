@@ -47,6 +47,10 @@ struct RootView: View {
             .padding(.bottom, 62)
 
             tabBar
+
+            if model.isGloballyLocked {
+                lockOverlay
+            }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showAccount) { AccountView() }
@@ -58,6 +62,30 @@ struct RootView: View {
         }
         .onChange(of: model.requestedAccount) { value in
             if value { showAccount = true; model.requestedAccount = false }
+        }
+    }
+
+    private var lockOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.28).ignoresSafeArea()
+            VStack(spacing: 13) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 38, weight: .semibold))
+                    .foregroundColor(YTheme.purple)
+                Text("当前不可用").font(.system(size: 20, weight: .bold)).foregroundColor(YTheme.text)
+                Text(model.globalLock?.reason ?? "服务端已开启时间锁，请在开放时间后再试。")
+                    .font(.caption).foregroundColor(YTheme.muted)
+                    .multilineTextAlignment(.center)
+                YPrimaryButton(title: "重新检测", icon: "arrow.clockwise", enabled: true) {
+                    model.refreshConfig()
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: 300)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: Color.black.opacity(0.12), radius: 24, y: 10)
+            .padding(28)
         }
     }
 
