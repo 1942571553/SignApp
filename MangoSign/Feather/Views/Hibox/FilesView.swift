@@ -437,6 +437,7 @@ struct FileBrowserView: View {
 		.scrollIndicators(.hidden)
 		.navigationTitle(title)
 		.navigationBarTitleDisplayMode(.inline)
+		.toolbar(.visible, for: .navigationBar)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
 				Menu {

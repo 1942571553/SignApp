@@ -193,6 +193,9 @@ struct SourceAppsDetailView: View {
 		}
 		.flexibleHeaderScrollView()
 		.shouldSetInset()
+		.navigationTitle(app.currentName)
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar(.visible, for: .navigationBar)
 		.toolbar {
 			NBToolbarButton(
 				systemImage: "square.and.arrow.up",

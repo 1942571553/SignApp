@@ -132,11 +132,17 @@ extension DownloadsView {
 
 // MARK: - Row
 struct DownloadRow: View {
-	@ObservedObject var download: Download
+	let download: Download
 
 	var onCancel: () -> Void
 
 	var body: some View {
+		TimelineView(.periodic(from: .now, by: 0.45)) { _ in
+			_content
+		}
+	}
+
+	private var _content: some View {
 		VStack(alignment: .leading, spacing: 10) {
 			HStack(spacing: 12) {
 				Image(systemName: download.onlyArchiving ? "archivebox.fill" : "arrow.down.doc.fill")
